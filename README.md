@@ -1,0 +1,2 @@
+# PupuJEPA
+PupuJEPA demo page
