@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>Frequency-Aware Self-Supervised Music Representation Learning</title>
+  <script src="./static/tailwind.js"></script>
+  <script src="./static/vue.global.js"></script>
+  <script src="./static/flowbite.min.js"></script>
+  <script src="./static/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style type="text/tailwindcss">
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @layer base {
+      a[href^="http"] {
+        @apply text-blue-500;
+      }
+
+      a:hover {
+        @apply text-blue-700 underline;
+      }
+
+      h1 {
+        @apply mb-6 text-4xl font-bold text-gray-900 text-center;
+      }
+
+      h2 {
+        @apply mb-3 pt-4 text-2xl font-bold tracking-tight text-gray-900;
+      }
+
+      h4 {
+        @apply mb-4 pt-12 text-3xl font-semibold text-gray-900;
+      }
+
+      h5 {
+        @apply mb-3 pt-4 text-2xl font-bold tracking-tight text-gray-900;
+      }
+
+      p {
+        @apply mb-4 font-normal text-gray-900 leading-relaxed;
+      }
+    }
+
+    @layer components {
+      .list-select {
+        @apply block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0;
+      }
+
+      .tooltip {
+        position: absolute;
+        text-align: center;
+        padding: 8px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 0;
+        border-radius: 8px;
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      .text-p {
+        @apply mb-4 font-normal text-gray-900 leading-relaxed;
+      }
+
+      .author {
+        @apply font-medium mr-2 pb-1 text-gray-900 inline-block text-base;
+      }
+
+      .author a {
+        @apply text-gray-900;
+      }
+
+      .affiliation a {
+        @apply text-gray-900;
+      }
+
+      .affiliation {
+        @apply font-medium mr-2 pb-1 text-gray-900 block text-base;
+      }
+    }
+  </style>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {}
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .black_overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.93);
+      z-index: 100;
+    }
+
+    .enlargeContainer {
+      display: none;
+    }
+
+    .enlargePreviewImg {
+      /*这里我设置的是：预览后放大的图片相对于整个页面定位*/
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+
+      /*宽度设置为页面宽度的70%，高度自适应*/
+      width: 70%;
+      z-index: 200;
+    }
+
+    /*关闭预览*/
+    .close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      z-index: 200;
+    }
+  </style>
+
+  <style>
+    /* 基础容器样式 */
+    .notion-callout {
+      display: flex;
+      /* 开启Flex布局 */
+      align-items: flex-start;
+      /* 图标和文字顶部对齐（如果文字很多） */
+      background-color: #F1F1EF;
+      /* Notion经典的浅灰色背景 */
+      padding: 16px 16px;
+      /* 内边距 */
+      border-radius: 4px;
+      /* 圆角 */
+      margin-bottom: 16px;
+      /* 块与块的间距 */
+      color: #37352f;
+      /* 字体颜色 */
+      font-family: sans-serif;
+      /* 字体 */
+      line-height: 1.5;
+      /* 行高 */
+    }
+
+    /* 图标样式 */
+    .notion-callout-icon {
+      margin-right: 12px;
+      /* 图标和文字的间距 */
+      font-size: 24px;
+      /* 图标大小 */
+      line-height: 1;
+      /* 防止图标撑高行高 */
+      user-select: none;
+      /* 防止图标被选中复制 */
+    }
+
+    /* 文字区域样式 */
+    .notion-callout-text {
+      word-break: break-word;
+      /* 防止长单词溢出 */
+    }
+
+    /* 红色背景/警告 */
+    .notion-callout.warning {
+      background-color: #FBE4E4;
+    }
+
+    /* 蓝色背景/信息 */
+    .notion-callout.info {
+      background-color: #E6F3F7;
+    }
+  </style>
+
+</head>
+
+<!--黑色遮罩-->
+<div class="black_overlay" id="black_overlay"></div>
+
+<!--预览容器，存放点击放大后的图片-->
+<div class="enlargeContainer" id="enlargeContainer">
+  <!-- 关闭按钮，一个叉号图片 -->
+  <img src="static/cross.png" class="close" id="close">
+</div>
+
+<body>
+  <div id="app">
+
+    <nav class="bg-white fixed w-full z-20 top-0 start-0 border-gray-200 border-b border-gray-200"
+      style="font-weight: bold;">
+      <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-3">
+        <button data-collapse-toggle="navbar-default" type="button"
+          class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+          aria-controls="navbar-default" aria-expanded="false">
+          <span class="sr-only">Open main menu</span>
+          <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M1 1h15M1 7h15M1 13h15" />
+          </svg>
+        </button>
+
+        <div class="hidden w-full md:block md:w-auto ml-auto" id="navbar-default">
+          <ul
+            class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white">
+            <li>
+              <a href="#home" class="list-select"><b>Home</b></a>
+            </li>
+            <li>
+              <a href="#pupujepa-intuition" class="list-select"><b>Intuition</b></a>
+            </li>
+            <li>
+              <a href="#pupujepa-methodology" class="list-select"><b>Methodology</b></a>
+            </li>
+            <li>
+              <a href="#pupujepa-marble" class="list-select"><b>MARBLE Benchmark</b></a>
+            </li>
+            <li>
+              <a href="#pupujepa-case" class="list-select"><b>Case Study</b></a>
+            </li>
+            <li>
+              <a href="https://github.com/sizigi/PupuJEPA" class="list-select" target="_blank">
+                <svg class="w-6 h-6 text-gray-900 hover:text-blue-700" aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd"
+                    d="M12.006 2a9.847 9.847 0 0 0-6.484 2.44 10.32 10.32 0 0 0-3.393 6.17 10.48 10.48 0 0 0 1.317 6.955 10.045 10.045 0 0 0 5.4 4.418c.504.095.683-.223.683-.494 0-.245-.01-1.052-.014-1.908-2.78.62-3.366-1.21-3.366-1.21a2.711 2.711 0 0 0-1.11-1.5c-.907-.637.07-.621.07-.621.317.044.62.163.885.346.266.183.487.426.647.71.135.253.318.476.538.655a2.079 2.079 0 0 0 2.37.196c.045-.52.27-1.006.635-1.37-2.219-.259-4.554-1.138-4.554-5.07a4.022 4.022 0 0 1 1.031-2.75 3.77 3.77 0 0 1 .096-2.713s.839-.275 2.749 1.05a9.26 9.26 0 0 1 5.004 0c1.906-1.325 2.74-1.05 2.74-1.05.37.858.406 1.828.101 2.713a4.017 4.017 0 0 1 1.029 2.75c0 3.939-2.339 4.805-4.564 5.058a2.471 2.471 0 0 1 .679 1.897c0 1.372-.012 2.477-.012 2.814 0 .272.18.592.687.492a10.05 10.05 0 0 0 5.388-4.421 10.473 10.473 0 0 0 1.313-6.948 10.32 10.32 0 0 0-3.39-6.165A9.847 9.847 0 0 0 12.007 2Z"
+                    clip-rule="evenodd" />
+                </svg>
+              </a>
+            </li>
+            <li>
+              <a href="https://huggingface.co/spellbrush/PupuJEPA" class="list-select" target="_blank">
+                <img class="h-6 w-6" src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" />
+              </a>
+            </li>
+            <li>
+              <a href="https://spellbrush.com/" class="list-select" target="_blank">
+                <img class="h-6 w-6" src="static/logo_spellbrush.webp" />
+              </a>
+            </li>
+            <li>
+              <a href="https://github.com/PupuAI" class="list-select" target="_blank">
+                <img class="h-6 w-6" src="static/logo_pupu.png" />
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+
+    <div class="p-5 md:p-0 mt-16 max-w-screen-xl mx-auto">
+      <div class="p-6" id="home">
+        <div class="mt-8 mb-8">
+          <h1>Frequency-Aware Self-Supervised Music Representation Learning</h1>
+        </div>
+
+        <div class="flex gap-2 justify-center flex-wrap">
+          <a href="TBD" target="_blank">
+            <img src="https://img.shields.io/badge/arXiv-Paper-red.svg">
+          </a>
+          <a href="https://github.com/sizigi/PupuJEPA" target="_blank">
+            <img src="https://img.shields.io/badge/GitHub-Repo-blue">
+          </a>
+          <a href="https://huggingface.co/spellbrush/PupuJEPA" target="_blank">
+            <img src="https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Model-yellow">
+          </a>
+        </div>
+
+        <div class="mx-auto mt-8 mb-16">
+          <div class="max-w-[900px] mx-auto text-center pb-10 flex flex-col gap-3">
+            <div class="text-sm">
+              <span class="author"><a href="https://www.yichenggu.com/">Yicheng Gu</a><sup>1,2,3</sup></span>
+              <span class="author"><a href="https://viewfinder-annn.github.io/">Junan Zhang</a><sup>3</sup></span>
+              <span class="author"><a href="https://jerrylijiaming.com/">Jerry Li</a><sup>1</sup></span>
+              <span class="author"><a href="https://drwuz.com/">Zhizheng Wu</a><sup>3</sup></span>
+              <span class="author">Lauri Juvela</a><sup>2</sup></span>
+            </div>
+            <div class="text-sm">
+              <span class="affiliation"><sup>1</sup>
+                <a href="https://spellbrush.com/">Spellbrush</a>
+              </span>
+              <span class="affiliation"><sup>2</sup>
+                <a href="https://www.aalto.fi/en">Aalto University</a>
+              </span>
+              <span class="affiliation"><sup>3</sup>
+                <a href="https://www.cuhk.edu.cn/en">The Chinese University of Hong Kong, Shenzhen</a>
+              </span>
+            </div>
+          </div>
+
+          <div class="max-w-[900px] mx-auto mt-8 mb-16">
+            <h2>Abstract</h2>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              Self-supervised learning (SSL) has emerged as an essential paradigm for music information retrieval (MIR).
+              While current SSL models achieve state-of-the-art performance across various MIR tasks, they typically
+              treat audio as 1D sequences, either operating on time-domain waveforms or on flattened
+              time-frequency-domain spectrograms.
+              This discards the rich spatial and structural information in time-frequency representations, and overlooks
+              a fundamental intuition in music production, where producers can analyze and edit multitrack projects by
+              visually interpreting 2D spectrograms.
+              To bridge this gap, this paper proposes PupuJEPA, a visual Joint-Embedding Predictive Architecture (JEPA)
+              trained directly on spectrograms.
+              Instead of applying masked language modeling (MLM) to 1D sequences, PupuJEPA learns robust representations
+              by predicting the latent embeddings of masked 2D spectrogram patches from unmasked contexts.
+              We additionally apply domain-specific modifications to the model architecture, training scheme, and
+              inference paradigm to optimally adapt such a visual framework to music signals.
+              Evaluations on the MARBLE benchmark show that PupuJEPA outperforms the 1D sequence-based SSL models across
+              multiple MIR tasks in linear probing.
+              Meanwhile, visualizing the models' attention maps further illustrates that PupuJEPA can capture musically
+              meaningful patterns that inherently align with the intuition of music producers.
+            </p>
+          </div>
+
+          <div class="mt-8 mb-8" id="pupujepa-intuition">
+            <h4>Intuition</h4>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              The intuition of this work is extremely simple:
+            </p>
+            <p class="text-center text-lg italic font-medium text-blue-600 my-6 px-4">
+              "Music SSL models should be trained on 2D Spectrograms."
+            </p>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              As a former music producer and DJ, neither I nor any of my friends would use the audio waveform as a
+              reference for producing, mixing, or mastering. Instead, we see real-time FFT spectra, observe STFT or CQT
+              spectrograms, and analyze the Sound Field Map.
+            </p>
+            <div class="notion-callout"
+              style="display: flex; padding: 16px; border-radius: 4px; background: rgba(235, 236, 237, 0.3);">
+              <div class="notion-callout-icon" style="margin-right: 12px;">💡</div>
+              <div class="notion-callout-text" style="flex: 1;">
+                <p style="margin-top: 0; margin-bottom: 16px; line-height: 1.5;">
+                  In case you don't know what Future Bass is and what Kawaii Base is, here are some introductory videos.
+                  Although the narratives of these videos are in Chinese, you can still get the vibe of these music
+                  genres.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+
+                  <div
+                    style="width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background-color: #f3f4f6;">
+                    <iframe
+                      src="//player.bilibili.com/player.html?bvid=BV1Sx4y1H7Ta&page=1&high_quality=1&danmaku=0&autoplay=0"
+                      scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"
+                      style="width: 100%; height: 100%;">
+                    </iframe>
+                  </div>
+
+                  <div
+                    style="width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background-color: #f3f4f6;">
+                    <iframe
+                      src="//player.bilibili.com/player.html?bvid=BV1wt4y157Cg&page=1&high_quality=1&danmaku=0&autoplay=0"
+                      scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"
+                      style="width: 100%; height: 100%;">
+                    </iframe>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+            <br>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              We use the viral Kawaii Bass song Pixel Galaxy by Snail's House to explain the idea. Below is a
+              walkthrough of its classical FL Studio fan-made reproduction.
+            </p>
+
+            <div class="w-full aspect-video mt-6 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+              <iframe class="w-full h-full" src="https://www.youtube.com/embed/RHlLN4iVGmQ"
+                title="Pixel Galaxy FL Studio Reproduction" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen>
+              </iframe>
+            </div>
+            <br>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              Here, let's focus on the first two bars of the first Drop. The music in this section primarily consists of
+              the tracks shown in the figure below.
+            </p>
+            <div class="notion-callout">
+              <div class="notion-callout-icon">💡</div>
+              <div class="notion-callout-text">
+                Note that we omit the FX effects and percussion loops. Although they are essential for fulfilling the
+                frequency bands and adjusting the dynamic range, they are difficult to observe and separate in the
+                spectrogram, and thus irrelevant to our work.
+              </div>
+            </div>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/playlist.png" alt="FL Studio Playlist" class="w-full h-auto object-cover block">
+            </div>
+            <div class="w-full bg-gray-50 border border-gray-200 rounded-lg px-6 pb-6 pt-3 shadow-sm mb-8">
+
+              <h5 class="text-lg font-semibold text-gray-800 mt-0 mb-4">Individual Tracks</h5>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🎹 Chord</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Chord.wav" type="audio/wav">
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🎵 Lead</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Lead.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🎸 Pluck</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Pluck.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🔊 Bass</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Bass.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🥁 Kick</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Kick.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">💥 Snare</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Snare.wav" type="audio/wav">
+                  </audio>
+                </div>
+              </div>
+
+              <hr class="my-6 border-gray-300">
+
+              <div class="flex flex-col space-y-2">
+                <span class="text-base font-bold text-gray-900">🎧 Full Track</span>
+                <audio controls class="w-full h-12 outline-none">
+                  <source src="./static/FullTrack.wav" type="audio/wav">
+                </audio>
+              </div>
+            </div>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              Music producers inherently can map individual track components to time-frequency patterns in the 2D
+              spectrogram. Since they can extract track-level information from the spectrogram, they can therefore
+              naturally conduct MIR tasks, as shown in the figure below:
+            </p>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/pupujepa-intuition.png" alt="FL Studio Playlist"
+                class="w-full h-auto object-cover block">
+            </div>
+          </div>
+
+          <div class="mt-8 mb-8" id="pupujepa-methodology">
+            <h4>Methodology</h4>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/pupujepa-model.png" class="w-full h-auto object-cover block">
+            </div>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              We adapt the Joint-Embedding Predictive Architecture (JEPA) and propose PupuJEPA. We did not use the
+              Masked Autoencoder (MAE) architecture, as it is prone to overfitting spectrogram details, since musical
+              spectrogram patches are highly temporally and spectrally correlated. We did not use the DINO architecture,
+              as music signals inherently lack data augmentation methods to obtain different views. To optimize such a
+              framework in the music domain, we additionally introduce various essential changes to the model
+              architecture, training scheme, and inference paradigms. The details are in our <a href="TBD">paper</a>.
+            </p>
+          </div>
+
+          <div class="mt-8 mb-8" id="pupujepa-marble">
+            <h4>MARBLE Benchmark</h4>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/table1.png" class="w-full h-auto object-cover block">
+            </div>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/table2.png" class="w-full h-auto object-cover block">
+            </div>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              We evaluate PupuJEPA on the MARBLE benchmark, as illustrated above. The details description of differnet
+              tasks can be found <a href="https://github.com/a43992899/MARBLE">here</a>. In particular, for 1D
+              sequence-based music and general sound SSL baselines, we compare with MERT (ICLR 2024), Dasheng
+              (Interspeech 2024), MuQ
+              (TASLP 2025), and MusicFM (ICASSP 2024); for 2D spectrogram-based audio SSL baselines, we compare
+              with AudioMAE++ (NeurIPS 2022, MLSP 2025), MATPAC++ (ICASSP 2025), and M2D-X (TASLP 2024). For music and
+              general sound SSL baselines, we directly use the pre-trained checkpoint and code from MARBLE; for audio
+              SSL baselines, we re-implemented the model and re-trained them using our in-house datasets under the exact
+              same configuration provided in their paper. We
+              additionally apply the same domain-specific optimization on inference paradigm to ensure a fair
+              comparison.
+            </p>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              It can be observed that PupuJEPA achieves SOTA performance across various MIR tasks. Notably, for MIR
+              tasks that can be inherently addressed by barely observing the spectrogram, PupuJEPA obtains significantly
+              better results, illustrating the effectiveness of our intuition. For instance, in GS Key detection,
+              PupuJEPA-Tiny outperforms almost all baseline model, with only 5M parameters.
+            </p>
+          </div>
+
+          <div class="mt-8 mb-8" id="pupujepa-case">
+            <h4>Case Study</h4>
+            <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <img src="./static/case-study.png" class="w-full h-auto object-cover block">
+            </div>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              We additionally conduct a case study by visualizing the attention map of the predictor during masked
+              latent prediction. As illustrated in the figure above, the bottom-left panel illustrates the attention map
+              when PupuJEPA tries to predict a masked Kick drum; instead of simply looking at the surrounding pixels,
+              its attention spans broadly across the music segment, selectively highlighting other Kick drum
+              distributions with similar rhythm patterns. Conversely, the bottom-right panel shows the attention map
+              when PupuJEPA tries to recover the masked root notes of a Lead sound. It spans across three key aspects.
+              Firstly, the model seeks the remaining unmasked higher harmonics of that specific Lead sound. Meanwhile,
+              the model focuses closely on the adjacent melodic Lead progressions just before the masked region. Lastly
+              and most remarkably, the attention map also highlights a structurally similar Lead progression from an
+              earlier section of the track, showing the model's ability to capture long-range dependencies rather than
+              just performing local interpolation.
+            </p>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              Such comprehensive visual evidence strongly validates our core motivation. By explicitly modeling 2D
+              spectrograms, PupuJEPA naturally enables zero-shot source disentanglement, harmonic tracking, and
+              long-range musical structural analysis, aligning with human music producers' visual intuition.
+            </p>
+          </div>
+        </div>
+      </div>
+</body>
+
+<script>
+  let black_overlay = document.getElementById('black_overlay');
+  let enlargeContainer = document.getElementById('enlargeContainer');
+  let closeBtn = document.getElementById('close');
+
+  let toEnlargeImgs = document.getElementsByClassName('toEnlargeImg');
+  for (let toEnlargeImg of toEnlargeImgs) {
+    toEnlargeImg.addEventListener('click', function () {
+      // 获取当前图片的路径
+      let imgUrl = this.src;
+      // 显示黑色遮罩和预览容器
+      black_overlay.style.display = 'block';
+      enlargeContainer.style.display = 'block';
+      let img = new Image();
+      img.src = imgUrl;
+      img.classList.add('enlargePreviewImg');
+      if (closeBtn.nextElementSibling) {
+        enlargeContainer.removeChild(closeBtn.nextElementSibling);
+      }
+      enlargeContainer.appendChild(img);
+    });
+  }
+
+  // 关闭预览
+  closeBtn.addEventListener('click', function () {
+    black_overlay.style.display = 'none';
+    enlargeContainer.style.display = 'none';
+  });
+</script>
+
+<script>
+  MathJax.typesetPromise([document.getElementById('local-math')]);
+</script>
+
+</html>
