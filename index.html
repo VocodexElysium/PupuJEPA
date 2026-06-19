@@ -313,19 +313,21 @@
               While current SSL models achieve state-of-the-art performance across various MIR tasks, they typically
               treat audio as 1D sequences, either operating on time-domain waveforms or on flattened
               time-frequency-domain spectrograms.
-              This discards the rich spatial and structural information in time-frequency representations, and overlooks
-              a fundamental intuition in music production, where producers can analyze and edit multitrack projects by
-              visually interpreting 2D spectrograms.
-              To bridge this gap, this paper proposes PupuJEPA, a visual Joint-Embedding Predictive Architecture (JEPA)
-              trained directly on spectrograms.
+              This discards the rich spatial and structural information in time-frequency representations and overlooks
+              a fundamental intuition in music production.
+              In particular, music is naturally represented as time-frequency grids in MIDI-based workflows, a structure
+              that tightly corresponds to 2D spectrograms and inherently makes many MIR tasks trivial.
+              Motivated by this intuition, we propose PupuJEPA, a visual Joint-Embedding Predictive Architecture (JEPA)
+              that is trained directly on 2D spectrograms.
               Instead of applying masked language modeling (MLM) to 1D sequences, PupuJEPA learns robust representations
-              by predicting the latent embeddings of masked 2D spectrogram patches from unmasked contexts.
-              We additionally apply domain-specific modifications to the model architecture, training scheme, and
-              inference paradigm to optimally adapt such a visual framework to music signals.
+              by predicting the latent embeddings of masked 2D spectrogram patches from unmasked contexts. To optimally
+              adapt such a visual framework to music signals, we also apply domain-specific modifications to model
+              architecture, training scheme, and inference paradigm, with comprehensive ablation studies showing their
+              effectiveness.
               Evaluations on the MARBLE benchmark show that PupuJEPA outperforms the 1D sequence-based SSL models across
               multiple MIR tasks in linear probing.
-              Meanwhile, visualizing the models' attention maps further illustrates that PupuJEPA can capture musically
-              meaningful patterns that inherently align with the intuition of music producers.
+              Additionally, case studies of the attention maps also confirm that PupuJEPA captures musically meaningful
+              patterns within the 2D time-frequency domain.
             </p>
           </div>
 
@@ -339,8 +341,10 @@
             </p>
             <p class="text-p text-justify leading-relaxed [text-align-last:left]">
               As a former music producer and DJ, neither I nor any of my friends would use the audio waveform as a
-              reference for producing, mixing, or mastering. Instead, we see real-time FFT spectra, observe STFT or CQT
-              spectrograms, and analyze the Sound Field Map.
+              reference for producing, mixing, or mastering. Instead, we use <em>Piano Rolls</em> for production, we
+              observe real-time <em>FFT spectra</em> from FabFilter Pro-Q 4 for mixing and sound design, and eventually
+              use Izotope RX to analyze the resulting song based on its <em>Mel-Spectrogram</em>. All of these are in 2D
+              time-frequency domain, instead of 1D time domain.
             </p>
             <div class="notion-callout"
               style="display: flex; padding: 16px; border-radius: 4px; background: rgba(235, 236, 237, 0.3);">
@@ -463,9 +467,10 @@
               </div>
             </div>
             <p class="text-p text-justify leading-relaxed [text-align-last:left]">
-              Music producers inherently can map individual track components to time-frequency patterns in the 2D
-              spectrogram. Since they can extract track-level information from the spectrogram, they can therefore
-              naturally conduct MIR tasks, as shown in the figure below:
+              The multi-track project is a structure that strongly correlates to the 2D spectrogram, and music producers
+              inherently can map time-frequency partterns in the 2D spectrogram to individual tracks and
+              "mentally reconstruct" the project, therefore making a lot of MIR tasks intuitively trival, as shown in
+              the figure below:
             </p>
             <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
               <img src="./static/pupujepa-intuition.png" alt="FL Studio Playlist"
@@ -484,7 +489,8 @@
               spectrogram patches are highly temporally and spectrally correlated. We did not use the DINO architecture,
               as music signals inherently lack data augmentation methods to obtain different views. To optimize such a
               framework in the music domain, we additionally introduce various essential changes to the model
-              architecture, training scheme, and inference paradigms. The details are in our <a href="TBD">paper</a>.
+              architecture, training scheme, and inference paradigms. For more details, please checkout our <a
+                href="TBD">preprint</a>.
             </p>
           </div>
 
@@ -502,7 +508,7 @@
               sequence-based music and general sound SSL baselines, we compare with MERT (ICLR 2024), Dasheng
               (Interspeech 2024), MuQ
               (TASLP 2025), and MusicFM (ICASSP 2024); for 2D spectrogram-based audio SSL baselines, we compare
-              with AudioMAE++ (NeurIPS 2022, MLSP 2025), MATPAC++ (ICASSP 2025), and M2D-X (TASLP 2024). For music and
+              with AudioMAE++ (NeurIPS 2022, MLSP 2025), MATPAC++ (ICASSP 2025), and A-JEPA (2023). For music and
               general sound SSL baselines, we directly use the pre-trained checkpoint and code from MARBLE; for audio
               SSL baselines, we re-implemented the model and re-trained them using our in-house datasets under the exact
               same configuration provided in their paper. We
@@ -524,21 +530,31 @@
             </div>
             <p class="text-p text-justify leading-relaxed [text-align-last:left]">
               We additionally conduct a case study by visualizing the attention map of the predictor during masked
-              latent prediction. As illustrated in the figure above, the bottom-left panel illustrates the attention map
-              when PupuJEPA tries to predict a masked Kick drum; instead of simply looking at the surrounding pixels,
-              its attention spans broadly across the music segment, selectively highlighting other Kick drum
-              distributions with similar rhythm patterns. Conversely, the bottom-right panel shows the attention map
-              when PupuJEPA tries to recover the masked root notes of a Lead sound. It spans across three key aspects.
-              Firstly, the model seeks the remaining unmasked higher harmonics of that specific Lead sound. Meanwhile,
-              the model focuses closely on the adjacent melodic Lead progressions just before the masked region. Lastly
-              and most remarkably, the attention map also highlights a structurally similar Lead progression from an
-              earlier section of the track, showing the model's ability to capture long-range dependencies rather than
-              just performing local interpolation.
+              latent prediction. As illustrated in the figure above, the bottom panels show the corresponding 2D
+              spectrograms regarding the multi-track project overlaid with the attention heatmaps. Note that the color
+              bars displayed on the right of the bottom panels denote the attention weights rather than the energy of
+              the spectrograms. The red bounding boxes denote the masked target regions that the model aims to predict,
+              while the other colored bounding boxes map individual track components to their corresponding
+              time-frequency patterns in the 2D spectrogram, specifically highlighting the regions that has high
+              attention weights.
             </p>
             <p class="text-p text-justify leading-relaxed [text-align-last:left]">
-              Such comprehensive visual evidence strongly validates our core motivation. By explicitly modeling 2D
-              spectrograms, PupuJEPA naturally enables zero-shot source disentanglement, harmonic tracking, and
-              long-range musical structural analysis, aligning with human music producers' visual intuition.
+              The bottom-left panel illustrates the attention map when PupuJEPA tries to predict a masked Kick drum.
+              It can be observed that, instead of simply looking at the surrounding pixels, its attention spans broadly
+              across the music segment, selectively highlighting other Kick drum distributions with similar rhythm
+              patterns.
+              Conversely, the bottom-right panel shows the attention map when PupuJEPA tries to recover the masked root
+              notes of a Lead sound. its attention spans across the remaining unmasked harmonics and the adjacent
+              melodic progressions just before the masked region, showing its ability to understand musical
+              context.
+            </p>
+            <p class="text-p text-justify leading-relaxed [text-align-last:left]">
+              Such visual evidence strongly validates our core intuition. Just like
+              music producers can "mentally reconstruct" a multi-track project from a 2D spectrogram, the PupuJEPA,
+              pre-trained
+              directly on music spectrograms, also develops this capability. As in the case study, PupuJEPA
+              naturally enables zero-shot disentanglement of individual tracks and long-range musical structural
+              analysis, thereby making many MIR tasks trivial to probe and achieving the SOTA performance.
             </p>
           </div>
         </div>
