@@ -273,7 +273,7 @@
         </div>
 
         <div class="flex gap-2 justify-center flex-wrap">
-          <a href="TBD" target="_blank">
+          <a href="https://arxiv.org/abs/2606.25713" target="_blank">
             <img src="https://img.shields.io/badge/arXiv-Paper-red.svg">
           </a>
           <a href="https://github.com/sizigi/PupuJEPA" target="_blank">
@@ -490,7 +490,7 @@
               as music signals inherently lack data augmentation methods to obtain different views. To optimize such a
               framework in the music domain, we additionally introduce various essential changes to the model
               architecture, training scheme, and inference paradigms. For more details, please checkout our <a
-                href="TBD">preprint</a>.
+                href="2606.25713">preprint</a>.
             </p>
           </div>
 
@@ -527,6 +527,38 @@
             <h4>Case Study</h4>
             <div class="w-full mt-8 mb-6 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
               <img src="./static/case-study.png" class="w-full h-auto object-cover block">
+            </div>
+            <div class="w-full bg-gray-50 border border-gray-200 rounded-lg px-6 pb-6 pt-3 shadow-sm mb-8">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🥁 Target Kick Drum</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Kick drum.wav" type="audio/wav">
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🥁 Attention Span</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Kick drum context.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🎵 Target Lead Root Notes</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Lead root.wav" type="audio/wav">
+                  </audio>
+                </div>
+
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm font-medium text-gray-700">🎵 Attention Span</span>
+                  <audio controls class="w-full h-10 outline-none">
+                    <source src="./static/Lead root context.wav" type="audio/wav">
+                  </audio>
+                </div>
+              </div>
             </div>
             <p class="text-p text-justify leading-relaxed [text-align-last:left]">
               We additionally conduct a case study by visualizing the attention map of the predictor during masked
